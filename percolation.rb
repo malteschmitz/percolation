@@ -1,34 +1,3 @@
-require 'matrix'
-
-require_relative 'disjoint_set_node'
-
-# extend matrix class and make it writeable
-class PercolMatrix < Matrix
-  def []=(i, j, x)
-    @rows[i][j] = x
-  end
-  
-  def to_s
-    keys = {}
-    max = 2
-    @rows.collect do |row|
-      row.collect do |e|
-        if e.respond_to?(:find)
-          unless keys.has_key?(e.find)
-            keys[e.find] = max
-            max += 1
-          end
-          keys[e.find]
-        elsif e
-          1
-        else
-          0
-        end
-      end.join(' ')
-    end.join("\n")
-  end
-end
-
 # site percolation
 class Percolation
   attr_reader :cluster, :p_infty
@@ -37,11 +6,15 @@ class Percolation
   # p = propability for one site of being set
   def initialize(n,p)
     @n = n
-    @matrix = PercolMatrix.build(n) do
-      rand < p
-    end
+    @matrix = Array.new(n) { Array.new(n) { rand < p ? 1 : 0 } }
     find_percolation
     compute_p_infty
+  end
+  
+  def to_s
+    @matrix.collect do |row|
+      row.join(' ')
+    end.join("\n")
   end
 
   private
@@ -51,44 +24,89 @@ class Percolation
     # list of burned sites in last step
     @burned = []
     
-    # keep track if global cluster
     @cluster = nil
     
-    # puts @matrix.to_s + "\n\n"
+    # puts to_s + "\n\n"
     
     # start burning every site with y == 0
     0.upto(@n-1) do |x|
-      if @matrix[0,x]
-        @matrix[0,x] = DisjointSetNode.new
+      if @matrix[0][x] == 1
+        @matrix[0][x] = 2
         @burned << [0,x]
       end
     end
     
-    # puts @matrix.to_s + "\n\n"
+    # puts to_s + "\n\n"
     
     # run burning steps
     while @burned.length > 0
       old_burned = @burned
       @burned = []
       old_burned.each do |y,x|
-        burn([y, x], [y-1, x]) if y > 0
-        burn([y, x], [y+1, x]) if y + 1 < @n
-        burn([y, x], [y, x-1]) if x >  0
-        burn([y, x], [y, x+1]) if x + 1 < @n
+        if y > 0
+          if @matrix[y-1][x] == 1
+            @matrix[y-1][x] = 2
+            @burned << [y-1,x]
+          end
+        end
+        if y + 1 < @n
+          if @matrix[y+1][x] == 1
+            @matrix[y+1][x] = 2
+            @burned << [y+1,x]
+            @cluster = [y+1,x] if y == @n-2
+          end
+        end
+        if x >  0
+          if @matrix[y][x-1] == 1
+            @matrix[y][x-1] = 2
+            @burned << [y,x-1]
+          end
+        end
+        if x + 1 < @n
+          if @matrix[y][x+1] == 1
+            @matrix[y][x+1] = 2
+            @burned << [y,x+1]
+          end
+        end 
       end
-      # puts @matrix.to_s + "\n\n"
+      # puts to_s + "\n\n"
     end
-  end
-  
-  def burn(c1, c2)
-    if m = @matrix[c2[0], c2[1]]
-      if m.respond_to?(:union)
-        m.union(@matrix[c1[0], c1[1]])
-      else
-        @matrix[c2[0], c2[1]] = @matrix[c1[0], c1[1]]
-        @cluster = @matrix[c2[0], c2[1]] if c2[0] == @n - 1
-        @burned << c2
+    
+    if @cluster
+      #rerun burning to get cluster connecting first with last row
+      @matrix[@cluster[0]][@cluster[1]] = 3
+      @burned = [@cluster]
+    end 
+    while @burned.length > 0
+      old_burned = @burned
+      @burned = []
+      old_burned.each do |y,x|
+        if y > 0
+          if @matrix[y-1][x] == 2
+            @matrix[y-1][x] = 3
+            @burned << [y-1,x]
+          end
+        end
+        if y + 1 < @n
+          if @matrix[y+1][x] == 2
+            @matrix[y+1][x] = 3
+            @burned << [y+1,x]
+          end
+        end
+        if x >  0
+          if @matrix[y][x-1] == 2
+            @matrix[y][x-1] = 3
+            @burned << [y,x-1]
+          end
+        end
+        if x + 1 < @n
+          if @matrix[y][x+1] == 2
+            @matrix[y][x+1] = 3
+            @burned << [y,x+1]
+          end
+        end 
       end
+      # puts to_s + "\n\n"
     end
   end
   
@@ -97,13 +115,12 @@ class Percolation
     unless @cluster
       @p_infty = 0
     else 
-      c = @cluster.find
       point_count = 0
       point_cluster_count = 0
-      @matrix.each do |m|
-        point_count += 1 if m
-        if m.respond_to?(:find)
-          point_cluster_count += 1 if m.find == c
+      @matrix.each do |row|
+        row.each do |m|
+          point_count += 1 if m > 0
+          point_cluster_count += 1 if m == 3
         end
       end
       # puts point_cluster_count
