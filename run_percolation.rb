@@ -7,17 +7,22 @@ n = 200
 
 p_cluster = []
 p_infty = []
+p_infty_all = []
 props.each do |p|
   p_c = 0
   p_i = 0
+  p_i_a = 0
   n.times do
     per = Percolation.new(size, p)
     p_c += 1 if per.cluster
     p_i += per.p_infty
+    p_i_a += per.p_infty_all
   end
   p_cluster << p_c * 1.0 / n
   p_infty << p_i * 1.0 / n
+  p_infty_all << p_i_a * 1.0 / n
 end
 puts props.join(' ')
 puts p_cluster.join(' ')
 puts p_infty.join(' ')
+puts p_infty_all.join(' ')

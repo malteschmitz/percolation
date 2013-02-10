@@ -1,6 +1,6 @@
 # site percolation
 class Percolation
-  attr_reader :cluster, :p_infty
+  attr_reader :cluster, :p_infty, :p_infty_all
 
   # n = size of grid
   # p = propability for one site of being set
@@ -114,6 +114,7 @@ class Percolation
   def compute_p_infty
     unless @cluster
       @p_infty = 0
+      @p_infty_all = 0
     else 
       point_count = 0
       point_cluster_count = 0
@@ -126,6 +127,7 @@ class Percolation
       # puts point_cluster_count
       # puts point_count
       @p_infty = point_cluster_count * 1.0 / point_count
+      @p_infty_all = point_cluster_count * 1.0 / @n / @n
     end
   end
 end
